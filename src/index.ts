@@ -1,4 +1,4 @@
-import { McpAgent } from "agents-sdk/mcp";
+import { McpAgent } from "agents-sdk";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
