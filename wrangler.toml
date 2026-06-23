@@ -1,0 +1,11 @@
+name = "rume-mood-lamp"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "RUME_STATE"
+id = "38f57dac3a9d468182c50c20e6956f84"
+
+[assets]
+directory = "./public"
