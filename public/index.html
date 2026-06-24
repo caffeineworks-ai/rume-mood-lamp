@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>3.6x3.6m 침실 평면도 시뮬레이터 v6</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 { font-size: 22px; margin-bottom: 15px; }
+        .main-container { display: flex; gap: 30px; align-items: flex-start; margin-top: 10px; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; }
+        button {
+            background-color: #fff;
+            border: 1px solid #333;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        button:hover { background-color: #333; color: #fff; }
+        svg {
+            background-color: #fff;
+            border: 2px solid #333;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        .legend {
+            background: #fff;
+            border: 1px solid #333;
+            padding: 20px;
+            width: 240px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+        .legend h2 { font-size: 16px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 12px; font-size: 13px; }
+        .legend-icon { width: 40px; height: 30px; margin-right: 15px; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+    <h1>3.6m × 3.6m 침실 평면도 (건축 도면 규격)</h1>
+    <div class="controls">
+        <button id="btn-furniture">가구 재배치</button>
+        <button id="btn-light">조명 배치</button>
+        <button id="btn-shuffle">Shuffle</button>
+        <button id="btn-buy">구매하기</button>
+    </div>
+
+    <div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center;">
+        <div style="background:#fff; border:2px solid #333; padding:30px; min-width:280px; box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+            <h2 style="font-size:16px; margin:0 0 20px; border-bottom:1px solid #333; padding-bottom:10px;">현재 조명 조합 주문</h2>
+            <div id="modal-body" style="font-size:14px; line-height:2;"></div>
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button id="btn-modal-order" style="background:#333; color:#fff; border:1px solid #333; padding:10px 20px; font-size:14px; font-weight:bold; cursor:pointer;">주문하기</button>
+                <button id="btn-modal-close" style="background:#fff; border:1px solid #333; padding:10px 20px; font-size:14px; cursor:pointer;">닫기</button>
+            </div>
+        </div>
+    </div>
+    <div class="main-container">
+        <svg id="floorplan" width="760" height="760" viewBox="0 0 760 760">
+            <defs>
+                <pattern id="wall-hatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="10" stroke="#333" stroke-width="1" />
+                </pattern>
+            </defs>
+            <g id="structure-layer"></g>
+            <g id="furniture-layer"></g>
+            <g id="light-layer"></g>
+        </svg>
+        <div class="legend">
+            <h2>도면 범례 (Legend)</h2>
+            <div class="legend-item">
+                <div class="legend-icon">
+                    <svg width="40" height="10">
+                        <defs>
+                            <pattern id="leg-hatch" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                                <line x1="0" y1="0" x2="0" y2="5" stroke="#333" stroke-width="0.8" />
+                            </pattern>
+                        </defs>
+                        <rect x="0" y="0" width="40" height="10" fill="url(#leg-hatch)" stroke="#333" stroke-width="1"/>
+                    </svg>
+                </div>
+                <span>콘크리트 외벽 (두께 15cm)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">
+                    <svg width="40" height="30">
+                        <line x1="35" y1="5" x2="35" y2="30" stroke="#333" stroke-width="1.5"/>
+                        <line x1="35" y1="5" x2="10" y2="5" stroke="#333" stroke-width="1.5"/>
+                        <path d="M 35 30 A 25 25 0 0 0 10 5" fill="none" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+                    </svg>
+                </div>
+                <span>여닫이문 (반경내 배치금지)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">
+                    <svg width="40" height="15"><rect x="0" y="2" width="40" height="11" fill="#fff" stroke="#333"/><line x1="0" y1="7" x2="40" y2="7" stroke="#333"/></svg>
+                </div>
+                <span>미닫이 2연동 창문</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">
+                    <svg width="40" height="30"><rect x="5" y="2" width="30" height="26" fill="#fff" stroke="#333"/><circle cx="13" cy="7" r="3" fill="none" stroke="#333"/><circle cx="27" cy="7" r="3" fill="none" stroke="#333"/></svg>
+                </div>
+                <span>더블 침대 (Double Bed)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">
+                    <svg width="30" height="30"><rect x="5" y="5" width="20" height="20" fill="#fff" stroke="#333"/><line x1="5" y1="5" x2="25" y2="25" stroke="#ccc"/><line x1="5" y1="25" x2="25" y2="5" stroke="#ccc"/></svg>
+                </div>
+                <span>침대 협탁 (Side Table)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">
+                    <svg width="40" height="20"><rect x="2" y="2" width="36" height="16" fill="#fff" stroke="#333"/><rect x="4" y="7" width="32" height="2" fill="none" stroke="#333"/></svg>
+                </div>
+                <span>TV 테이블 & 80" TV</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon">
+                    <svg width="30" height="30"><circle cx="15" cy="15" r="8" fill="#fff" stroke="#333"/><line x1="7" y1="15" x2="23" y2="15" stroke="#333"/><line x1="15" y1="7" x2="15" y2="23" stroke="#333"/></svg>
+                </div>
+                <span>발광버섯 조명 (군락 형성)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 상수 (단위: cm)
+        const SCALE = 2;
+        const ROOM_SIZE = 360;
+        const OFFSET = 20;
+
+        const FURNITURE_DATA = {
+            bed:       { width: 140, height: 210, name: 'Bed' },
+            sideTable: { width: 40,  height: 40,  name: 'SideTable' },
+            tvTable:   { width: 180, height: 40,  name: 'TVTable' }
+        };
+
+        const LIGHT_RADII = [5, 7.5, 10];
+
+        let placedFurniture = [];
+        let placedLights    = [];
+        let isLightPlaced   = false;
+
+        const DOOR_DEADZONE = { x: 330, y: 330, width: 60, height: 60, angle: 0 };
+
+        // --- 구조 렌더링
+        function drawStructure() {
+            const layer = document.getElementById('structure-layer');
+            layer.innerHTML = '';
+            const o = OFFSET;
+            const s = ROOM_SIZE * SCALE;  
+            const wT = 15 * SCALE;        
+
+            layer.innerHTML += `<path d="
+                M ${o-wT} ${o-wT} H ${o+s+wT} V ${o+s+wT} H ${o-wT} Z
+                M ${o} ${o} H ${o+s} V ${o+s} H ${o} Z"
+                fill="url(#wall-hatch)" stroke="#333" stroke-width="2" fill-rule="evenodd"/>`;
+
+            const winX = o + 120 * SCALE;
+            const winW = 120 * SCALE;
+            layer.innerHTML += `
+                <rect x="${winX}" y="${o-wT}" width="${winW}" height="${wT}" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                <line x1="${winX}" y1="${o - wT/2}" x2="${winX + winW}" y2="${o - wT/2}" stroke="#333" stroke-width="1"/>`;
+
+            const px = o + s;                   
+            const py = o + 300 * SCALE;         
+            const doorLen = 60 * SCALE;         
+            const doorEndY  = py + doorLen;     
+            const arcEndX   = px - doorLen;     
+
+            layer.innerHTML += `
+                <rect x="${px}" y="${py}" width="${wT}" height="${doorLen}" fill="#f9f9f9" stroke="none"/>
+                <circle cx="${px}" cy="${py}" r="3" fill="#333"/>
+                <line x1="${px}" y1="${py}" x2="${px}" y2="${doorEndY}" stroke="#333" stroke-width="2"/>
+                <path d="M ${px} ${doorEndY} A ${doorLen} ${doorLen} 0 0 1 ${arcEndX} ${py}"
+                      fill="none" stroke="#333" stroke-width="1" stroke-dasharray="4,4"/>
+                <line x1="${px}" y1="${py}" x2="${arcEndX}" y2="${py}" stroke="#333" stroke-width="1.5"/>`;
+        }
+
+        // --- 기하학 헬퍼
+        function getVertices(item) {
+            const rad = (item.angle * Math.PI) / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            const hw = item.width / 2, hh = item.height / 2;
+            return [
+                {x: -hw, y: -hh}, {x: hw, y: -hh}, {x: hw, y: hh}, {x: -hw, y: hh}
+            ].map(v => ({
+                x: item.x + (v.x * cos - v.y * sin),
+                y: item.y + (v.x * sin + v.y * cos)
+            }));
+        }
+
+        function checkOverlapRect(rA, rB) {
+            const axes = (verts) => {
+                const ax = [];
+                for (let i = 0; i < verts.length; i++) {
+                    const p1 = verts[i], p2 = verts[(i+1) % verts.length];
+                    const ex = p2.x - p1.x, ey = p2.y - p1.y;
+                    ax.push({x: -ey, y: ex});
+                }
+                return ax;
+            };
+            const project = (verts, axis) => {
+                let mn = Infinity, mx = -Infinity;
+                for (const p of verts) {
+                    const d = p.x * axis.x + p.y * axis.y;
+                    if (d < mn) mn = d; if (d > mx) mx = d;
+                }
+                return {mn, mx};
+            };
+            const vA = getVertices(rA), vB = getVertices(rB);
+            for (const axis of [...axes(vA), ...axes(vB)]) {
+                const pA = project(vA, axis), pB = project(vB, axis);
+                if (pA.mx < pB.mn || pB.mx < pA.mn) return false;
+            }
+            return true;
+        }
+
+        function isCircleFullyInRect(cx, cy, r, rect) {
+            const rad = (-rect.angle * Math.PI) / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            const dx = cx - rect.x, dy = cy - rect.y;
+            const lx = dx * cos - dy * sin;
+            const ly = dx * sin + dy * cos;
+            return (Math.abs(lx) <= rect.width/2 - r &&
+                    Math.abs(ly) <= rect.height/2 - r);
+        }
+
+        function isCircleOverlapRect(cx, cy, r, rect) {
+            const rad = (-rect.angle * Math.PI) / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            const dx = cx - rect.x, dy = cy - rect.y;
+            const lx = Math.abs(dx * cos - dy * sin);
+            const ly = Math.abs(dx * sin + dy * cos);
+            const hw = rect.width / 2, hh = rect.height / 2;
+            if (lx > hw + r || ly > hh + r) return false;
+            if (lx <= hw || ly <= hh) return true;
+            return (lx - hw) ** 2 + (ly - hh) ** 2 <= r * r;
+        }
+
+        function isCircleOverlapDoorArc(cx, cy, r) {
+            const pivotX = 360, pivotY = 300, arcR = 60;
+            if (cx > pivotX || cy < pivotY) return false;
+            const dist = Math.hypot(cx - pivotX, cy - pivotY);
+            return dist < arcR + r;
+        }
+
+        // --- 가구 배치 (수정됨)
+        function layoutRulesFurniture() {
+            placedFurniture = [];
+
+            // 1. 침대 배치
+            let bed = null;
+            for (let attempt = 0; attempt < 300; attempt++) {
+                const wallIdx = Math.floor(Math.random() * 4);
+                const walls = ['NORTH','SOUTH','EAST','WEST'];
+                const wall = walls[wallIdx];
+                const bw = FURNITURE_DATA.bed.width;
+                const bh = FURNITURE_DATA.bed.height;
+                let b = { width: bw, height: bh, angle: 0, name: 'Bed', x: 0, y: 0 };
+
+                if (wall === 'NORTH') {
+                    b.angle = 0; b.x = bw/2 + Math.random() * (ROOM_SIZE - bw); b.y = bh/2;
+                } else if (wall === 'SOUTH') {
+                    b.angle = 180; b.x = bw/2 + Math.random() * (ROOM_SIZE - bw); b.y = ROOM_SIZE - bh/2;
+                } else if (wall === 'WEST') {
+                    b.angle = 270; b.x = bh/2; b.y = bw/2 + Math.random() * (ROOM_SIZE - bw);
+                } else { 
+                    b.angle = 90; b.x = ROOM_SIZE - bh/2; b.y = bw/2 + Math.random() * (ROOM_SIZE - bw);
+                }
+                if (!checkOverlapRect(b, DOOR_DEADZONE)) {
+                    bed = b;
+                    break;
+                }
+            }
+            if (!bed) bed = { x: 70, y: 105, width: 140, height: 210, angle: 0, name: 'Bed' };
+            placedFurniture.push(bed);
+
+            // 2. 협탁 배치 알고리즘 고도화 (머리맡 기준 좌우 여유 공간 계산)
+            let sideSide = 1; // 기본값: 우측 배치 (+1)
+            
+            // 침대 머리맡 기준으로 왼쪽 벽과 오른쪽 벽까지의 거리 비교
+            if (bed.angle === 0) {       // 북쪽 벽 밀착 (머리가 북쪽): 왼쪽 벽=X=0, 오른쪽 벽=X=360
+                sideSide = (bed.x > ROOM_SIZE - bed.x) ? -1 : 1; 
+            } else if (bed.angle === 180) { // 남쪽 벽 밀착 (머리가 남쪽): 왼쪽 벽=X=360, 오른쪽 벽=X=0
+                sideSide = (bed.x < ROOM_SIZE - bed.x) ? -1 : 1;
+            } else if (bed.angle === 270) { // 서쪽 벽 밀착 (머리가 서쪽): 왼쪽 벽=Y=360, 오른쪽 벽=Y=0
+                sideSide = (bed.y < ROOM_SIZE - bed.y) ? -1 : 1;
+            } else if (bed.angle === 90) {  // 동쪽 벽 밀착 (머리가 동쪽): 왼쪽 벽=Y=0, 오른쪽 벽=Y=360
+                sideSide = (bed.y > ROOM_SIZE - bed.y) ? -1 : 1;
+            }
+
+            const rad = (bed.angle * Math.PI) / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            const st = FURNITURE_DATA.sideTable;
+            const offY = -bed.height/2 + st.height/2; 
+            const offX = bed.width/2 + st.width/2;
+
+            // 결정된 상대적 넓은 쪽 방향으로 단 '하나'의 협탁만 생성
+            const lx = sideSide * offX;
+            const sx = bed.x + (lx * cos - offY * sin);
+            const sy = bed.y + (lx * sin + offY * cos);
+            const sideTable = { width: st.width, height: st.height, angle: bed.angle, name: 'SideTable', x: sx, y: sy };
+
+            // 안전장치: 혹시라도 문이나 벽 바깥으로 나가는 예외 발생 시 반대 방향으로 전환
+            if (sx < 0 || sx > ROOM_SIZE || sy < 0 || sy > ROOM_SIZE || checkOverlapRect(sideTable, DOOR_DEADZONE)) {
+                const altLx = -sideSide * offX;
+                sideTable.x = bed.x + (altLx * cos - offY * sin);
+                sideTable.y = bed.y + (altLx * sin + offY * cos);
+            }
+            
+            placedFurniture.push(sideTable);
+
+            // 3. TV 테이블 배치
+            const tv = FURNITURE_DATA.tvTable;
+            for (let attempt = 0; attempt < 400; attempt++) {
+                const wall = ['NORTH','SOUTH','EAST','WEST'][Math.floor(Math.random() * 4)];
+                let t = { width: tv.width, height: tv.height, angle: 0, name: 'TVTable', x: 0, y: 0 };
+                if (wall === 'NORTH') {
+                    t.angle = 0; t.x = tv.width/2 + Math.random()*(ROOM_SIZE-tv.width); t.y = tv.height/2;
+                } else if (wall === 'SOUTH') {
+                    t.angle = 0; t.x = tv.width/2 + Math.random()*(ROOM_SIZE-tv.width); t.y = ROOM_SIZE - tv.height/2;
+                } else if (wall === 'WEST') {
+                    t.angle = 90; t.x = tv.height/2; t.y = tv.width/2 + Math.random()*(ROOM_SIZE-tv.width);
+                } else {
+                    t.angle = 90; t.x = ROOM_SIZE - tv.height/2; t.y = tv.width/2 + Math.random()*(ROOM_SIZE-tv.width);
+                }
+                
+                if (!checkOverlapRect(t, bed) && !checkOverlapRect(t, sideTable) && !checkOverlapRect(t, DOOR_DEADZONE)) {
+                    placedFurniture.push(t);
+                    break;
+                }
+            }
+
+            isLightPlaced = false;
+            placedLights = [];
+            renderLights();
+            renderFurniture();
+        }
+
+        // --- 발광버섯 군락 배치
+        function randomizeLights() {
+            placedLights = [];
+            const numLights = Math.floor(Math.random() * 4) + 4; 
+
+            const sideTable = placedFurniture.find(f => f.name === 'SideTable');
+            let seedX, seedY;
+            if (sideTable && Math.random() > 0.4) {
+                seedX = sideTable.x; seedY = sideTable.y;
+            } else {
+                seedX = 60 + Math.random() * 240;
+                seedY = 60 + Math.random() * 240;
+            }
+
+            for (let i = 0; i < numLights; i++) {
+                let placed = false;
+                for (let attempt = 0; attempt < 500; attempt++) {
+                    const r = LIGHT_RADII[Math.floor(Math.random() * LIGHT_RADII.length)];
+                    const angle  = Math.random() * Math.PI * 2;
+                    const dist   = Math.random() * 50;
+                    const x = seedX + Math.cos(angle) * dist;
+                    const y = seedY + Math.sin(angle) * dist;
+
+                    if (x - r < 0 || x + r > ROOM_SIZE || y - r < 0 || y + r > ROOM_SIZE) continue;
+                    if (isCircleOverlapDoorArc(x, y, r)) continue;
+
+                    let onSideTable = false;
+                    if (sideTable) {
+                        onSideTable = isCircleFullyInRect(x, y, r, sideTable);
+                    }
+
+                    if (!onSideTable) {
+                        let hit = false;
+                        for (const pf of placedFurniture) {
+                            if (isCircleOverlapRect(x, y, r, pf)) { hit = true; break; }
+                        }
+                        if (hit) continue;
+                    }
+
+                    let lightHit = false;
+                    for (const pl of placedLights) {
+                        if (Math.hypot(x - pl.x, y - pl.y) < r + pl.r + 2) { lightHit = true; break; }
+                    }
+                    if (lightHit) continue;
+
+                    placedLights.push({ x, y, r });
+                    placed = true;
+                    break;
+                }
+            }
+            renderLights();
+        }
+
+        // --- 렌더링
+        function renderFurniture() {
+            const layer = document.getElementById('furniture-layer');
+            layer.innerHTML = '';
+            placedFurniture.forEach(f => {
+                const cx = OFFSET + f.x * SCALE, cy = OFFSET + f.y * SCALE;
+                const w = f.width * SCALE, h = f.height * SCALE;
+                let inner = '';
+                if (f.name === 'Bed') {
+                    inner = `<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                             <rect x="${-w/2+15*SCALE}" y="${-h/2+5*SCALE}" width="${45*SCALE}" height="${30*SCALE}" fill="none" stroke="#333"/>
+                             <rect x="${w/2-60*SCALE}" y="${-h/2+5*SCALE}" width="${45*SCALE}" height="${30*SCALE}" fill="none" stroke="#333"/>
+                             <line x1="${-w/2}" y1="${-h/2+50*SCALE}" x2="${w/2}" y2="${-h/2+50*SCALE}" stroke="#333"/>`;
+                } else if (f.name === 'SideTable') {
+                    inner = `<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                             <line x1="${-w/2}" y1="${-h/2}" x2="${w/2}" y2="${h/2}" stroke="#ddd"/>
+                             <line x1="${-w/2}" y1="${h/2}" x2="${w/2}" y2="${-h/2}" stroke="#ddd"/>`;
+                } else if (f.name === 'TVTable') {
+                    inner = `<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                             <rect x="${-w/2+5*SCALE}" y="${-2*SCALE}" width="${w-10*SCALE}" height="${4*SCALE}" fill="none" stroke="#333" stroke-width="1.5"/>`;
+                }
+                layer.innerHTML += `<g transform="translate(${cx},${cy}) rotate(${f.angle})">${inner}</g>`;
+            });
+        }
+
+        function renderLights() {
+            const layer = document.getElementById('light-layer');
+            layer.innerHTML = '';
+            if (!isLightPlaced) return;
+            placedLights.forEach(l => {
+                const cx = OFFSET + l.x * SCALE, cy = OFFSET + l.y * SCALE, r = l.r * SCALE;
+                layer.innerHTML += `<g transform="translate(${cx},${cy})">
+                    <circle cx="0" cy="0" r="${r}" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                    <line x1="${-r}" y1="0" x2="${r}" y2="0" stroke="#333" stroke-width="0.8"/>
+                    <line x1="0" y1="${-r}" x2="0" y2="${r}" stroke="#333" stroke-width="0.8"/>
+                </g>`;
+            });
+        }
+
+        // --- 이벤트
+        document.getElementById('btn-furniture').addEventListener('click', layoutRulesFurniture);
+        document.getElementById('btn-light').addEventListener('click', () => { isLightPlaced = true; randomizeLights(); });
+        document.getElementById('btn-shuffle').addEventListener('click', () => { isLightPlaced = true; randomizeLights(); });
+
+        document.getElementById('btn-buy').addEventListener('click', () => {
+            if (!isLightPlaced || placedLights.length === 0) {
+                alert('먼저 조명을 배치해주세요.');
+                return;
+            }
+            const sizeMap = { 5: { label: '소형 (지름 10cm)', count: 0 },
+                              7.5: { label: '중형 (지름 15cm)', count: 0 },
+                              10:  { label: '대형 (지름 20cm)', count: 0 } };
+            placedLights.forEach(l => { if (sizeMap[l.r]) sizeMap[l.r].count++; });
+
+            const prices = { 5: 49000, 7.5: 69000, 10: 89000 };
+            let html = '<table style="width:100%; border-collapse:collapse;">';
+            html += '<tr style="border-bottom:1px solid #eee;"><th style="text-align:left; padding:6px 0; font-weight:normal; color:#888;">사이즈</th><th style="text-align:center; color:#888; font-weight:normal;">수량</th><th style="text-align:right; color:#888; font-weight:normal;">금액</th></tr>';
+            let total = 0;
+            for (const [r, info] of Object.entries(sizeMap)) {
+                if (info.count === 0) continue;
+                const price = prices[r] * info.count;
+                total += price;
+                html += `<tr style="border-bottom:1px solid #f5f5f5;">
+                    <td style="padding:8px 0;">${info.label}</td>
+                    <td style="text-align:center;">${info.count}개</td>
+                    <td style="text-align:right;">${price.toLocaleString()}원</td>
+                </tr>`;
+            }
+            html += `<tr><td colspan="2" style="padding-top:12px; font-weight:bold;">합계</td><td style="text-align:right; padding-top:12px; font-weight:bold;">${total.toLocaleString()}원</td></tr>`;
+            html += '</table>';
+
+            document.getElementById('modal-body').innerHTML = html;
+            const overlay = document.getElementById('modal-overlay');
+            overlay.style.display = 'flex';
+        });
+
+        document.getElementById('btn-modal-close').addEventListener('click', () => {
+            document.getElementById('modal-overlay').style.display = 'none';
+        });
+        document.getElementById('btn-modal-order').addEventListener('click', () => {
+            alert('주문이 접수되었습니다. 감사합니다!');
+            document.getElementById('modal-overlay').style.display = 'none';
+        });
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+        });
+
+        window.onload = function() {
+            drawStructure();
+            layoutRulesFurniture();
+        };
+    </script>
+
+    <script>
+        // =====================================================
+        // MCP 폴링 — claude.ai에서 tool 호출 시 자동 반영
+        // ★ 학생 수정: 아래 URL을 본인 Worker URL로 바꾸세요
+        // =====================================================
+        const MCP_WORKER_URL = "https://rume-mood-lamp.typica-918.workers.dev";
+        let lastStateStr = "";
+
+        function applyServerState(state) {
+            if (!state || !state.furniture) return;
+            placedFurniture = state.furniture;
+            placedLights    = state.lights || [];
+            isLightPlaced   = state.lightsPlaced || false;
+            renderFurniture();
+            renderLights();
+        }
+
+        async function pollState() {
+            try {
+                const res = await fetch(MCP_WORKER_URL + "/state");
+                if (!res.ok) return;
+                const text = await res.text();
+                if (text === "{}" || text === lastStateStr) return;
+                lastStateStr = text;
+                applyServerState(JSON.parse(text));
+            } catch(e) {}
+        }
+
+        setInterval(pollState, 2000);
+    </script>
+</body>
+</html>
