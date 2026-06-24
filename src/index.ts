@@ -1,4 +1,4 @@
-import { McpAgent } from "agents";
+import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 interface Env {
