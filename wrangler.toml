@@ -13,4 +13,4 @@ class_name = "RumeMCP"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["RumeMCP"]
+new_sqlite_classes = ["RumeMCP"]
