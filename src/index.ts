@@ -237,6 +237,31 @@ export class RumeMCP extends McpAgent {
   server = new McpServer({ name: "rume-mood-lamp", version: "1.0.0" });
 
   async init() {
+
+//제품 정보
+this.server.tool(
+  "get_product_info",
+  "rume 무드램프의 제품 컨셉, 디자인 특징, 기능을 설명합니다.",
+  {},
+  async () => {
+    const info = `[rume 무드램프 제품 컨셉]
+
+${`본 제품은 개인 공간의 분위기 연출을 위한 오브제형 무드 램프입니다. 버섯에서 착안한 유기적인 형태와 은은한 확산광을 통해 편안하고 따뜻한 공간 경험을 제공하며, 조명이 꺼져 있을 때에도 인테리어 오브제로 기능합니다. 또한 직관적인 터치 조작과 감성적인 디자인을 바탕으로 사용자의 라이프스타일과 공간의 가치를 향상시키는 것을 목표로 합니다.
+
+버섯의 둥근 갓을 현대적으로 재해석해 친근하면서도 조형적인 실루엣을 구현했습니다. 직선을 최소화한 곡면 중심의 형태로 시각적 안정감을 주고, 표면의 세로 패턴으로 리듬감과 입체감을 더했습니다. 불필요한 요소를 배제한 간결한 조형으로, 꺼져 있을 때도 하나의 인테리어 오브제로 기능하는 기능성과 심미성을 겸한 조명을 제안합니다.
+
+크림 컬러의 리브 쉐이드와 레드 원통형 베이스로 구성된 탁상용 무드 램프입니다. 반복되는 세로 주름 형태의 쉐이드는 빛을 부드럽게 확산시켜 눈부심을 줄이고, 따뜻한 발광으로 침실·서재·거실 등 개인 공간의 분위기를 은은하게 조율합니다. 상단 터치 인터페이스를 통해 ON/OFF, 밝기, 색온도, 무드 모드를 직관적으로 조작할 수 있으며, 제품은 단순한 조명 기기를 넘어 사용자의 감정과 공간을 연결하는 감성 오브제로 기능합니다.`}
+
+[가격 정보]
+- 소형 (지름 10cm): 49,000원
+- 중형 (지름 15cm): 69,000원
+- 대형 (지름 20cm): 89,000원`;
+
+    return { content: [{ type: "text", text: info }] };
+  }
+);
+
+
     // 가구 재배치 도면 도구
     this.server.tool("rearrange_furniture", "침실의 가구를 새로운 위치로 재배치하고 조명을 초기화합니다.", {}, async () => {
       const furniture = layoutRulesFurniture();
@@ -246,7 +271,7 @@ export class RumeMCP extends McpAgent {
     });
 
     // 조명 초기 배치 도구
-    this.server.tool("place_lights", "발광버섯 조명 군락을 현재 가구 배치에 맞게 새로 배치합니다.", {}, async () => {
+    this.server.tool("place_lights", "조명 군락을 현재 가구 배치에 맞게 새로 배치합니다.", {}, async () => {
       const raw = await (this.env as Env).RUME_STATE.get("state");
       const state = raw ? JSON.parse(raw) : { furniture: layoutRulesFurniture(), lights: [], lightsPlaced: false };
       state.lights = randomizeLights(state.furniture);
