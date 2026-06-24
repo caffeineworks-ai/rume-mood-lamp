@@ -1,8 +1,9 @@
 import { McpAgent } from "agents/mcp";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 interface Env {
   RUME_STATE: KVNamespace;
+  MCP_OBJECT: DurableObjectNamespace;
 }
 
 const ROOM_SIZE = 360;
@@ -83,79 +84,75 @@ function randomLights(furniture: any[]) {
   return lights;
 }
 
-function createServer(env: Env) {
-  const server = new McpServer({ name: "rume-mood-lamp", version: "1.0.0" });
+export class RumeMCP extends McpAgent {
+  server = new McpServer({ name: "rume-mood-lamp", version: "1.0.0" });
 
-  server.tool("rearrange_furniture", "침실의 가구를 새로운 위치로 재배치하고 조명을 초기화합니다.", {}, async () => {
-    const furniture = randomFurniture();
-    const state = { furniture, lights: [], lightsPlaced: false };
-    await env.RUME_STATE.put("state", JSON.stringify(state));
-    return { content: [{ type: "text", text: JSON.stringify(state) }] };
-  });
+  async init() {
+    this.server.tool("rearrange_furniture", "침실의 가구를 새로운 위치로 재배치하고 조명을 초기화합니다.", {}, async () => {
+      const furniture = randomFurniture();
+      const state = { furniture, lights: [], lightsPlaced: false };
+      await (this.env as Env).RUME_STATE.put("state", JSON.stringify(state));
+      return { content: [{ type: "text", text: JSON.stringify(state) }] };
+    });
 
-  server.tool("place_lights", "발광버섯 조명 군락을 현재 가구 배치에 맞게 새로 배치합니다.", {}, async () => {
-    const raw = await env.RUME_STATE.get("state");
-    const state = raw ? JSON.parse(raw) : { furniture: randomFurniture(), lights: [], lightsPlaced: false };
-    state.lights = randomLights(state.furniture);
-    state.lightsPlaced = true;
-    await env.RUME_STATE.put("state", JSON.stringify(state));
-    return { content: [{ type: "text", text: JSON.stringify(state) }] };
-  });
+    this.server.tool("place_lights", "발광버섯 조명 군락을 현재 가구 배치에 맞게 새로 배치합니다.", {}, async () => {
+      const raw = await (this.env as Env).RUME_STATE.get("state");
+      const state = raw ? JSON.parse(raw) : { furniture: randomFurniture(), lights: [], lightsPlaced: false };
+      state.lights = randomLights(state.furniture);
+      state.lightsPlaced = true;
+      await (this.env as Env).RUME_STATE.put("state", JSON.stringify(state));
+      return { content: [{ type: "text", text: JSON.stringify(state) }] };
+    });
 
-  server.tool("shuffle_lights", "조명 위치를 다시 섞어 새로운 군락 배치를 만듭니다.", {}, async () => {
-    const raw = await env.RUME_STATE.get("state");
-    const state = raw ? JSON.parse(raw) : { furniture: randomFurniture(), lights: [], lightsPlaced: false };
-    state.lights = randomLights(state.furniture);
-    state.lightsPlaced = true;
-    await env.RUME_STATE.put("state", JSON.stringify(state));
-    return { content: [{ type: "text", text: JSON.stringify(state) }] };
-  });
+    this.server.tool("shuffle_lights", "조명 위치를 다시 섞어 새로운 군락 배치를 만듭니다.", {}, async () => {
+      const raw = await (this.env as Env).RUME_STATE.get("state");
+      const state = raw ? JSON.parse(raw) : { furniture: randomFurniture(), lights: [], lightsPlaced: false };
+      state.lights = randomLights(state.furniture);
+      state.lightsPlaced = true;
+      await (this.env as Env).RUME_STATE.put("state", JSON.stringify(state));
+      return { content: [{ type: "text", text: JSON.stringify(state) }] };
+    });
 
-  server.tool("get_order_summary", "현재 배치된 조명의 사이즈별 수량과 금액을 반환합니다.", {}, async () => {
-    const raw = await env.RUME_STATE.get("state");
-    const state = raw ? JSON.parse(raw) : null;
-    if (!state || !state.lightsPlaced) {
-      return { content: [{ type: "text", text: "조명이 아직 배치되지 않았습니다." }] };
-    }
-    const prices: Record<number, number> = { 5: 49000, 7.5: 69000, 10: 89000 };
-    const labels: Record<number, string> = { 5: "소형(지름 10cm)", 7.5: "중형(지름 15cm)", 10: "대형(지름 20cm)" };
-    const counts: Record<number, number> = { 5: 0, 7.5: 0, 10: 0 };
-    state.lights.forEach((l: any) => { if (counts[l.r] !== undefined) counts[l.r]++; });
-    let total = 0;
-    const items = Object.entries(counts)
-      .filter(([, c]) => c > 0)
-      .map(([r, c]) => {
-        const price = prices[Number(r)] * (c as number);
-        total += price;
-        return { label: labels[Number(r)], count: c, price };
-      });
-    return { content: [{ type: "text", text: JSON.stringify({ items, total }) }] };
-  });
-
-  return server;
+    this.server.tool("get_order_summary", "현재 배치된 조명의 사이즈별 수량과 금액을 반환합니다.", {}, async () => {
+      const raw = await (this.env as Env).RUME_STATE.get("state");
+      const state = raw ? JSON.parse(raw) : null;
+      if (!state || !state.lightsPlaced) {
+        return { content: [{ type: "text", text: "조명이 아직 배치되지 않았습니다." }] };
+      }
+      const prices: Record<number, number> = { 5: 49000, 7.5: 69000, 10: 89000 };
+      const labels: Record<number, string> = { 5: "소형(지름 10cm)", 7.5: "중형(지름 15cm)", 10: "대형(지름 20cm)" };
+      const counts: Record<number, number> = { 5: 0, 7.5: 0, 10: 0 };
+      state.lights.forEach((l: any) => { if (counts[l.r] !== undefined) counts[l.r]++; });
+      let total = 0;
+      const items = Object.entries(counts)
+        .filter(([, c]) => c > 0)
+        .map(([r, c]) => {
+          const price = prices[Number(r)] * (c as number);
+          total += price;
+          return { label: labels[Number(r)], count: c, price };
+        });
+      return { content: [{ type: "text", text: JSON.stringify({ items, total }) }] };
+    });
+  }
 }
 
-export { RumeMCP };
-
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/state") {
-      const val = await env.RUME_STATE.get("state");
-      return new Response(val ?? "{}", {
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
+    if (url.pathname === "/mcp") {
+      return RumeMCP.serve("/mcp").fetch(request, env, ctx);
     }
 
-    if (url.pathname === "/mcp") {
-      const server = createServer(env);
-      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-      await server.connect(transport);
-      return transport.handleRequest(request, {});
+    if (url.pathname === "/state") {
+      return env.RUME_STATE.get("state").then(val =>
+        new Response(val ?? "{}", {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        })
+      );
     }
 
     return new Response("Not found", { status: 404 });
