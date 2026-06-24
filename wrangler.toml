@@ -6,3 +6,11 @@ compatibility_flags = ["nodejs_compat"]
 [[kv_namespaces]]
 binding = "RUME_STATE"
 id = "38f57dac3a9d468182c50c20e6956f84"
+
+[[durable_objects.bindings]]
+name = "MCP_OBJECT"
+class_name = "RumeMCP"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RumeMCP"]
